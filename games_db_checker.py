@@ -1,4 +1,3 @@
-
 import discord
 from discord.ext import commands, tasks
 import requests
@@ -51,7 +50,7 @@ class GameNotifier:
             description = game_data['description'][:1000]
             if len(game_data['description']) > 1000:
                 description += "..."
-            embed.description = f"**{game_data['official_name']}**{description}"
+            embed.description = f"**{game_data['official_name']}**\n{description}"
         else:
             embed.description = f"**{game_data['official_name']}**"
         if 'image_url' in game_data and game_data['image_url']:
