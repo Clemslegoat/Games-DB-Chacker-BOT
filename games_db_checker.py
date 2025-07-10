@@ -81,26 +81,36 @@ notifier = GameNotifier()
 @bot.event
 async def on_ready():
     print(f'Surveillance de la base de données activée')
-    check_database.start()
+    if not check_database.is_running():
+        check_database.start()
 
 FRENCH_TZ = pytz.timezone('Europe/Paris')
 
-@tasks.loop(time=time(hour=10, minute=0))
+@tasks.loop(time=time(hour=10, minute=0, tzinfo=FRENCH_TZ))
 async def check_database():
+    print(f"[{datetime.now()}] [DEBUG] check_database lancé automatiquement")
     try:
+        print("[DEBUG] Appel de notifier.check_for_new_games()")
         new_games = await notifier.check_for_new_games()
+        print(f"[DEBUG] Résultat de check_for_new_games : {new_games}")
         if new_games:
+            print("[DEBUG] De nouveaux jeux ont été détectés")
             channel = bot.get_channel(CHANNEL_ID)
+            print(f"[DEBUG] Récupération du channel avec ID {CHANNEL_ID} : {channel}")
             if not channel:
-                print(f"Canal {CHANNEL_ID} introuvable!")
+                print(f"[ERREUR] Canal {CHANNEL_ID} introuvable !")
                 return
             for game_key, game_data in new_games:
+                print(f"[DEBUG] Envoi de la notification pour le jeu : {game_key}")
                 embed = await notifier.create_game_embed(game_key, game_data)
                 await channel.send(embed=embed)
-                print(f"Nouveau jeu notifié: {game_data.get('official_name', game_key)}")
+                print(f"[INFO] Nouveau jeu notifié: {game_data.get('official_name', game_key)}")
                 await asyncio.sleep(1)
+            print("[DEBUG] Tous les nouveaux jeux ont été notifiés.")
+        else:
+            print("[DEBUG] Aucun nouveau jeu détecté lors de la vérification automatique.")
     except Exception as e:
-        print(f"Erreur dans check_database: {e}")
+        print(f"[ERREUR] Exception dans check_database: {e}")
 
 @check_database.before_loop
 async def before_check_database():
