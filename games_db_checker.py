@@ -61,14 +61,17 @@ class GameNotifier:
     async def check_for_new_games(self):
         global known_games
         database = await self.fetch_database()
+        print(f"[DEBUG] Contenu de la base récupérée : {list(database.keys())}")
+        print(f"[DEBUG] known_games AVANT comparaison : {list(known_games)}")
         if not database:
+            print("[DEBUG] Base vide ou inaccessible !")
             return []
         current_games = set(database.keys())
-        # Détecter les nouveaux jeux (même au premier appel)
         new_game_keys = current_games - known_games
+        print(f"[DEBUG] Nouveaux jeux détectés : {list(new_game_keys)}")
         new_games = [(game_key, database[game_key]) for game_key in new_game_keys]
-        # Mettre à jour known_games à chaque appel
         known_games = current_games
+        print(f"[DEBUG] known_games APRÈS mise à jour : {list(known_games)}")
         return new_games
 
 notifier = GameNotifier()
@@ -83,17 +86,17 @@ FRENCH_TZ = pytz.timezone('Europe/Paris')
 
 @tasks.loop(time=time(hour=10, minute=0, tzinfo=FRENCH_TZ))
 async def check_database():
-    print(f"[{datetime.now()}] [DEBUG] check_database lancé automatiquement")
+    print(f"[{datetime.now()}] [DEBUG] check_database lancé automatiquement (tâche planifiée)")
     try:
-        print("[DEBUG] Appel de notifier.check_for_new_games()")
+        print("[DEBUG] Appel de notifier.check_for_new_games() (tâche planifiée)")
         new_games = await notifier.check_for_new_games()
-        print(f"[DEBUG] Résultat de check_for_new_games : {new_games}")
+        print(f"[DEBUG] Résultat de check_for_new_games (tâche planifiée) : {new_games}")
         if new_games:
-            print("[DEBUG] De nouveaux jeux ont été détectés")
+            print("[DEBUG] De nouveaux jeux ont été détectés (tâche planifiée)")
             channel = bot.get_channel(CHANNEL_ID)
             print(f"[DEBUG] Récupération du channel avec ID {CHANNEL_ID} : {channel}")
-            if not channel:
-                print(f"[ERREUR] Canal {CHANNEL_ID} introuvable !")
+            if not channel or not hasattr(channel, "send"):
+                print(f"[ERREUR] Canal {CHANNEL_ID} introuvable ou de type incorrect !")
                 return
             for game_key, game_data in new_games:
                 print(f"[DEBUG] Envoi de la notification pour le jeu : {game_key}")
@@ -101,11 +104,11 @@ async def check_database():
                 await channel.send(embed=embed)
                 print(f"[INFO] Nouveau jeu notifié: {game_data.get('official_name', game_key)}")
                 await asyncio.sleep(1)
-            print("[DEBUG] Tous les nouveaux jeux ont été notifiés.")
+            print("[DEBUG] Tous les nouveaux jeux ont été notifiés (tâche planifiée).")
         else:
-            print("[DEBUG] Aucun nouveau jeu détecté lors de la vérification automatique.")
+            print("[DEBUG] Aucun nouveau jeu détecté lors de la vérification automatique (tâche planifiée).")
     except Exception as e:
-        print(f"[ERREUR] Exception dans check_database: {e}")
+        print(f"[ERREUR] Exception dans check_database (tâche planifiée): {e}")
 
 @check_database.before_loop
 async def before_check_database():
