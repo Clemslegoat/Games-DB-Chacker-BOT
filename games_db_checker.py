@@ -62,17 +62,12 @@ class GameNotifier:
         global known_games
         database = await self.fetch_database()
         if not database:
-            return
-        new_games = []
+            return []
         current_games = set(database.keys())
-        if not known_games:
-            known_games = current_games
-            print(f"Base initialisée avec {len(known_games)} jeux")
-            return
+        # Détecter les nouveaux jeux (même au premier appel)
         new_game_keys = current_games - known_games
-        for game_key in new_game_keys:
-            game_data = database[game_key]
-            new_games.append((game_key, game_data))
+        new_games = [(game_key, database[game_key]) for game_key in new_game_keys]
+        # Mettre à jour known_games à chaque appel
         known_games = current_games
         return new_games
 
