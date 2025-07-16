@@ -7,15 +7,26 @@ from datetime import datetime, time
 import pytz
 import os
 from dotenv import load_dotenv
+from discord import TextChannel
 
 # Chargement des variables d'environnement
-load_dotenv()
+# load_dotenv() # Supprimé car Railway gère les variables d'environnement
 
 # Configuration sécurisée
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 JSONBIN_URL = os.getenv("JSONBIN_URL")
 JSONBIN_API_KEY = os.getenv("JSONBIN_API_KEY")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID", "0"))
+
+# Vérification explicite
+if not DISCORD_TOKEN:
+    print("ERREUR: DISCORD_TOKEN manquant dans les variables Railway !")
+if not JSONBIN_URL:
+    print("ERREUR: JSONBIN_URL manquant dans les variables Railway !")
+if not JSONBIN_API_KEY:
+    print("ERREUR: JSONBIN_API_KEY manquant dans les variables Railway !")
+if not CHANNEL_ID:
+    print("ERREUR: CHANNEL_ID manquant ou incorrect dans les variables Railway !")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -94,6 +105,9 @@ async def check_database():
         if new_games:
             print("[DEBUG] De nouveaux jeux ont été détectés (tâche planifiée)")
             channel = bot.get_channel(CHANNEL_ID)
+            if not isinstance(channel, TextChannel):
+                print(f"[ERREUR] Canal {CHANNEL_ID} n'est pas un TextChannel !")
+                return
             print(f"[DEBUG] Récupération du channel avec ID {CHANNEL_ID} : {channel}")
             if not channel or not hasattr(channel, "send"):
                 print(f"[ERREUR] Canal {CHANNEL_ID} introuvable ou de type incorrect !")
