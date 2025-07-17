@@ -28,30 +28,66 @@ if not JSONBIN_API_KEY:
 if not CHANNEL_ID:
     print("ERREUR: CHANNEL_ID manquant ou incorrect dans les variables Railway !")
 
+print("[DEBUG] Début de l'initialisation du script")
+
+# Chargement des variables d'environnement
+print("[DEBUG] Chargement des variables d'environnement...")
+# load_dotenv() # Supprimé car Railway gère les variables d'environnement
+
+# Configuration sécurisée
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+JSONBIN_URL = os.getenv("JSONBIN_URL")
+JSONBIN_API_KEY = os.getenv("JSONBIN_API_KEY")
+CHANNEL_ID = int(os.getenv("CHANNEL_ID", "0"))
+
+# Vérification explicite
+if not DISCORD_TOKEN:
+    print("ERREUR: DISCORD_TOKEN manquant dans les variables Railway !")
+if not JSONBIN_URL:
+    print("ERREUR: JSONBIN_URL manquant dans les variables Railway !")
+if not JSONBIN_API_KEY:
+    print("ERREUR: JSONBIN_API_KEY manquant dans les variables Railway !")
+if not CHANNEL_ID:
+    print("ERREUR: CHANNEL_ID manquant ou incorrect dans les variables Railway !")
+
+print(f"[DEBUG] DISCORD_TOKEN: {'OK' if DISCORD_TOKEN else 'NON'}")
+print(f"[DEBUG] JSONBIN_URL: {'OK' if JSONBIN_URL else 'NON'}")
+print(f"[DEBUG] JSONBIN_API_KEY: {'OK' if JSONBIN_API_KEY else 'NON'}")
+print(f"[DEBUG] CHANNEL_ID: {CHANNEL_ID}")
+
 intents = discord.Intents.default()
 intents.message_content = True
 
+print("[DEBUG] Création du bot Discord...")
 bot = commands.Bot(command_prefix='!', intents=intents)
 known_games = set()
 
 class GameNotifier:
     def __init__(self):
+        print("[DEBUG] Initialisation de GameNotifier...")
         self.session = requests.Session()
         if JSONBIN_API_KEY:
             self.session.headers.update({
                 'X-Access-Key': JSONBIN_API_KEY
             })
+        print("[DEBUG] Session requests initialisée avec headers :", self.session.headers)
     
     async def fetch_database(self):
+        print("[DEBUG] fetch_database appelé...")
         try:
+            print(f"[DEBUG] Requête GET vers {JSONBIN_URL}")
             response = self.session.get(JSONBIN_URL)
+            print(f"[DEBUG] Statut de la réponse : {response.status_code}")
             response.raise_for_status()
-            return response.json().get('record', {})
+            data = response.json().get('record', {})
+            print(f"[DEBUG] Données reçues : {list(data.keys())}")
+            return data
         except requests.RequestException as e:
-            print(f"Erreur lors de la récupération de la DB: {e}")
+            print(f"[ERREUR] lors de la récupération de la DB: {e}")
             return {}
     
     async def create_game_embed(self, game_key, game_data):
+        print(f"[DEBUG] Création de l'embed pour le jeu : {game_key}")
         embed = discord.Embed(
             title="🎮 Nouveau jeu ajouté !",
             color=0x00ff00,
@@ -70,6 +106,7 @@ class GameNotifier:
         return embed
     
     async def check_for_new_games(self):
+        print("[DEBUG] check_for_new_games appelé...")
         global known_games
         database = await self.fetch_database()
         print(f"[DEBUG] Contenu de la base récupérée : {list(database.keys())}")
@@ -87,17 +124,22 @@ class GameNotifier:
 
 notifier = GameNotifier()
 
+FRENCH_TZ = pytz.timezone('Europe/Paris')
+print(f"[DEBUG] FRENCH_TZ initialisé : {FRENCH_TZ}")
+
 @bot.event
 async def on_ready():
+    print(f"[DEBUG] on_ready appelé à {datetime.now(FRENCH_TZ)}")
     print(f'Surveillance de la base de données activée')
     if not check_database.is_running():
+        print("[DEBUG] Démarrage de la tâche planifiée check_database")
         check_database.start()
-
-FRENCH_TZ = pytz.timezone('Europe/Paris')
+    else:
+        print("[DEBUG] La tâche check_database est déjà en cours")
 
 @tasks.loop(time=time(hour=10, minute=0, tzinfo=FRENCH_TZ))
 async def check_database():
-    print(f"[{datetime.now()}] [DEBUG] check_database lancé automatiquement (tâche planifiée)")
+    print(f"[{datetime.now()}] [DEBUG] check_database exécuté (heure locale : {datetime.now(FRENCH_TZ)})")
     try:
         print("[DEBUG] Appel de notifier.check_for_new_games() (tâche planifiée)")
         new_games = await notifier.check_for_new_games()
@@ -105,6 +147,7 @@ async def check_database():
         if new_games:
             print("[DEBUG] De nouveaux jeux ont été détectés (tâche planifiée)")
             channel = bot.get_channel(CHANNEL_ID)
+            print(f"[DEBUG] bot.get_channel({CHANNEL_ID}) => {channel}")
             if not isinstance(channel, TextChannel):
                 print(f"[ERREUR] Canal {CHANNEL_ID} n'est pas un TextChannel !")
                 return
