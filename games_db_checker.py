@@ -137,9 +137,10 @@ async def on_ready():
     else:
         print("[DEBUG] La tâche check_database est déjà en cours")
 
-@tasks.loop(time=time(hour=10, minute=0, tzinfo=FRENCH_TZ))
+@tasks.loop(time=time(hour=8, minute=0, tzinfo=pytz.utc))  # 8h UTC = 10h Paris en été
 async def check_database():
-    print(f"[{datetime.now()}] [DEBUG] check_database exécuté (heure locale : {datetime.now(FRENCH_TZ)})")
+    print(f"[{datetime.utcnow()}] [DEBUG] check_database exécuté (heure UTC)")
+    print(f"[{datetime.now(FRENCH_TZ)}] [DEBUG] check_database exécuté (heure Paris)")
     try:
         print("[DEBUG] Appel de notifier.check_for_new_games() (tâche planifiée)")
         new_games = await notifier.check_for_new_games()
